@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Video Conferencing</title>
+  <style>
+    
+    #chat {
+      height: 200px;
+      overflow-y: scroll;
+    }
+
+    video {
+      width: 320px;
+      height: 240px;
+    }
+  </style>
+</head>
+<body>
+  <div id="chat">
+    
+  </div>
+  <input type="text" id="message" placeholder="Type a message..." />
+  <button id="sendBtn">Send</button>
+
+  <video id="localVideo" autoplay></video>
+  <video id="remoteVideo" autoplay></video>
+
+  <button id="startBtn">Start Call</button>
+  <button id="stopBtn">Stop Call</button>
+
+  <button id="recordBtn">Start Recording</button>
+  <button id="stopRecordBtn">Stop Recording</button>
+
+  <script>
+    
+    const chatDiv = document.getElementById('chat');
+    const messageInput = document.getElementById('message');
+    const sendBtn = document.getElementById('sendBtn');
+
+    sendBtn.addEventListener('click', () => {
+      const message = messageInput.value;
+      if (message.trim() !== '') {
+        appendMessage(message);
+        messageInput.value = '';
+        // Send the message to other participants
+        
+      }
+    });
+
+    function appendMessage(message) {
+      const p = document.createElement('p');
+      p.textContent = message;
+      chatDiv.appendChild(p);
+    }
+
+    
+    const localVideo = document.getElementById('localVideo');
+    const remoteVideo = document.getElementById('remoteVideo');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+
+    let localStream;
+    let remoteStream;
+
+    startBtn.addEventListener('click', startCall);
+    stopBtn.addEventListener('click', stopCall);
+
+    async function startCall() {
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localVideo.srcObject = localStream;
+
+        
+      } catch (error) {
+        console.error('Error accessing media devices:', error);
+      }
+    }
+
+    function stopCall() {
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localVideo.srcObject = null;
+      }
+
+      if (remoteStream) {
+        remoteStream.getTracks().forEach(track => track.stop());
+        remoteVideo.srcObject = null;
+      }
+    }
+
+    
+    const recordBtn = document.getElementById('recordBtn');
+    const stopRecordBtn = document.getElementById('stopRecordBtn');
+
+    let mediaRecorder;
+    let recordedChunks = [];
+
+    recordBtn.addEventListener('click', startRecording);
+    stopRecordBtn.addEventListener('click', stopRecording);
+
+    function startRecording() {
+      recordedChunks = [];
+      const stream = localVideo.captureStream();
+      mediaRecorder = new MediaRecorder(stream);
+
+      mediaRecorder.addEventListener('dataavailable', event => {
+        if (event.data.size > 0) {
+          recordedChunks.push(event.data);
+        }
+      });
+
+      mediaRecorder.start();
+    }
+
+    function stopRecording() {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+    }
+
+    mediaRecorder.addEventListener('stop', () => {
+      const blob = new Blob(recordedChunks, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'recording.webm';
+      a.click();
+    });
+  </script>
+</body>
+</html>
